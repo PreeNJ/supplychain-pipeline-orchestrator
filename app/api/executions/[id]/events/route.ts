@@ -9,5 +9,21 @@ export async function GET(
 
   const stream = new ReadableStream({
     start(controller) {
-      // We will connect this to a message broker in Week 2.
+
       controller.enqueue(`data: {"message": "Connection established. Waiting for updates..."}\n\n`);
+
+      request.signal.onabort = () => {
+        console.log(`SSE connection closed for executionId: ${executionId}`);
+        controller.close();
+      };
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
