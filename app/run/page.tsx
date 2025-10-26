@@ -16,3 +16,9 @@ export default function RunPage() {
     }
     setLoading(true);
     setError('');
+    try {
+      const response = await fetch('/api/executions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trackingNumber }),
+      });
