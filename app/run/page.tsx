@@ -1,4 +1,3 @@
-// app/run/page.tsx
 'use client';
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,3 +21,9 @@ export default function RunPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trackingNumber }),
       });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to start tracking.');
+      }
+      const data = await response.json();
+      router.push(`/executions/${data.executionId}`);
