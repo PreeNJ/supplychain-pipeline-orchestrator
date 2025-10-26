@@ -32,3 +32,10 @@ export default function RunPage() {
       setLoading(false);
     }
   };
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-2xl">
+        <h1 className="text-3xl font-bold text-center text-indigo-700">ChainTrack AI</h1>
+        <p className="text-center text-gray-500">Real-time Supply Chain Automation</p>
+        
+        <form onSubmit={handleSubmit} className="space-y-4"></form>
