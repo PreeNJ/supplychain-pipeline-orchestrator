@@ -69,7 +69,7 @@ export default function ExecutionPage({ params }: ExecutionPageProps) {
                   <StatusIcon status={event.status} />
               </div>
               <div className="flex-1">
-                <p className="text-sm text-gray-500">{event.timestamp}</p>
+                <p className="text-sm text-gray-500">{new Date(event.timestamp).toLocaleTimeString()}</p>
                 <p className="text-base font-medium text-gray-700">{event.message}</p>
                 {event.aiSummary && <p className="text-xs text-indigo-600 mt-1">[AI Summary Captured]</p>}
               </div>
