@@ -1,3 +1,5 @@
+import { prisma } from '@/lib/db';
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(
@@ -8,14 +10,64 @@ export async function GET(
   console.log(`SSE connection opened for executionId: ${executionId}`);
 
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
+      try {
 
-      controller.enqueue(`data: {"message": "Connection established. Waiting for updates..."}\n\n`);
+        const execution = await prisma.execution.findUnique({
+          where: { id: executionId },
+          include: { events: { orderBy: { createdAt: 'desc' } } },
+        });
 
-      request.signal.onabort = () => {
-        console.log(`SSE connection closed for executionId: ${executionId}`);
+        if (!execution) {
+          controller.enqueue(`data: ${JSON.stringify({ error: "Execution not found", status: "FAILED" })}\n\n`);
+          controller.close();
+          return;
+        }
+
+        controller.enqueue(`data: ${JSON.stringify({
+          status: execution.status,
+          aiSummary: execution.aiSummary,
+          message: execution.events[0]?.message || "Execution started",
+          timestamp: new Date().toISOString()
+        })}\n\n`);
+
+        const interval = setInterval(async () => {
+          try {
+            const updated = await prisma.execution.findUnique({
+              where: { id: executionId },
+              include: { events: { orderBy: { createdAt: 'desc' }, take: 1 } },
+            });
+
+            if (updated) {
+              const eventData = {
+                status: updated.status,
+                aiSummary: updated.aiSummary,
+                message: updated.events[0]?.message || "Processing...",
+                timestamp: new Date().toISOString()
+              };
+              
+              controller.enqueue(`data: ${JSON.stringify(eventData)}\n\n`);
+
+              if (updated.status === 'COMPLETED' || updated.status === 'FAILED') {
+                clearInterval(interval);
+                controller.close();
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching execution update:', error);
+          }
+        }, 2000);
+
+        request.signal.onabort = () => {
+          console.log(`SSE connection closed for executionId: ${executionId}`);
+          clearInterval(interval);
+          controller.close();
+        };
+      } catch (error) {
+        console.error('Error in SSE route:', error);
+        controller.enqueue(`data: ${JSON.stringify({ error: "Server error", status: "FAILED" })}\n\n`);
         controller.close();
-      };
+      }
     },
   });
 
