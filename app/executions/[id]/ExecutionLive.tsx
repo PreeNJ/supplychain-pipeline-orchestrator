@@ -1,8 +1,8 @@
-'use client';
+'use client'; 
 
 import { useExecutionEvents } from '@/lib/useExecutionEvents';
 import { CheckCircle, Clock, XCircle, Zap } from 'lucide-react';
-
+import React from 'react'; 
 interface ExecutionLiveProps {
   executionId: string;
 }
@@ -21,10 +21,11 @@ const StatusIcon = ({ status }: { status: string }) => {
   }
 };
 
+
 export default function ExecutionLive({ executionId }: ExecutionLiveProps) {
   const { status, events, aiSummary, connectionState } = useExecutionEvents(executionId);
 
-  const isProcessing = status === 'PROCESSING';
+  const isProcessing = status === 'PROCESSING'; 
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -32,7 +33,7 @@ export default function ExecutionLive({ executionId }: ExecutionLiveProps) {
         <h1 className="text-3xl font-extrabold text-indigo-700 mb-2">Live Shipment Orchestrator</h1>
         <p className="text-sm text-gray-500 mb-6">Execution ID: {executionId}</p>
 
-        {/* AI Summary Card */}
+        {/* AI Summary Card (The Job Deliverable) */}
         <div className="mb-8 p-6 bg-indigo-50 border-l-4 border-indigo-500 rounded-lg">
           <div className="flex items-center space-x-3 mb-2">
             <StatusIcon status={status} />
@@ -50,9 +51,9 @@ export default function ExecutionLive({ executionId }: ExecutionLiveProps) {
           )}
 
           {connectionState === 'OPEN' && isProcessing && (
-            <p className="text-sm text-indigo-500 mt-3 flex items-center">
-              <Zap className="w-4 h-4 mr-1"/> Receiving live events...
-            </p>
+              <p className="text-sm text-indigo-500 mt-3 flex items-center">
+                <Zap className="w-4 h-4 mr-1"/> Receiving live events...
+              </p>
           )}
         </div>
 
@@ -62,9 +63,10 @@ export default function ExecutionLive({ executionId }: ExecutionLiveProps) {
           {events.slice().reverse().map((event, index) => (
             <div key={index} className="flex items-start space-x-4 border-b pb-4 last:border-b-0">
               <div className="flex-shrink-0 pt-1">
-                <StatusIcon status={event.status} />
+                  <StatusIcon status={event.status} />
               </div>
               <div className="flex-1">
+                {/* Hydration fix: ensures time is rendered consistently */}
                 <p className="text-sm text-gray-500">{new Date(event.timestamp).toLocaleTimeString()}</p>
                 <p className="text-base font-medium text-gray-700">{event.message}</p>
                 {event.aiSummary && <p className="text-xs text-indigo-600 mt-1">[AI Summary Captured]</p>}

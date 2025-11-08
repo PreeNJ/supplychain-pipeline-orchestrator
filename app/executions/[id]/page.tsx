@@ -6,6 +6,6 @@ interface ExecutionPageProps {
 
 export default function ExecutionPage({ params }: ExecutionPageProps) {
   const executionId = params.id;
-
-  return <ExecutionLive executionId={executionId} />;
+  
+return <ExecutionLive executionId={executionId} />;
 }
