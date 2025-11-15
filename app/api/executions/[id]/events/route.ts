@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { addController, removeController } from '@/lib/sse'; // <-- Import broker functions
 
 export const dynamic = 'force-dynamic';
 
@@ -6,25 +7,27 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { id } = await params;
+  const { id } = params;
   console.log(`SSE connection opened for id: ${id}`);
 
   const stream = new ReadableStream({
     async start(controller) {
+
+      addController(id, controller);
+
       try {
         const execution = await prisma.execution.findUnique({
           where: { id: id },
-          include: { events: { orderBy: { createdAt: 'desc' } } },
+          include: { events: { orderBy: { createdAt: 'asc' } } }, // Get in chronological order
         });
 
         if (!execution) {
           controller.enqueue(`data: ${JSON.stringify({ error: "Execution not found", status: "FAILED" })}\n\n`);
           controller.close();
           return;
-        }
+        } 
 
-        // Send all events
-        for (const event of execution.events.reverse()) {
+        for (const event of execution.events) {
           controller.enqueue(`data: ${JSON.stringify({
             status: execution.status,
             aiSummary: execution.aiSummary,
@@ -34,44 +37,24 @@ export async function GET(
           })}\n\n`);
         }
 
-        const interval = setInterval(async () => {
-          try {
-            const updated = await prisma.execution.findUnique({
-              where: { id: id },
-              include: { events: { orderBy: { createdAt: 'desc' }, take: 1 } },
-            });
-
-            if (updated && updated.events[0]) {
-              const eventData = {
-                status: updated.status,
-                aiSummary: updated.aiSummary,
-                message: updated.events[0].message,
-                eventType: updated.events[0].eventType || 'INFO',
-                timestamp: updated.events[0].createdAt.toISOString()
-              };
-              
-              controller.enqueue(`data: ${JSON.stringify(eventData)}\n\n`);
-
-              if (updated.status === 'COMPLETED' || updated.status === 'FAILED') {
-                clearInterval(interval);
-                controller.close();
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching execution update:', error);
-          }
-        }, 2000);
-
-        request.signal.onabort = () => {
-          console.log(`SSE connection closed for id: ${id}`);
-          clearInterval(interval);
+        // 3. Check if the process is already finished and close if so
+        if (execution.status === 'COMPLETED' || execution.status === 'FAILED') {
+          removeController(id);
           controller.close();
-        };
+        }
+
       } catch (error) {
-        console.error('Error in SSE route:', error);
+        console.error('Error in SSE route initial load:', error);
         controller.enqueue(`data: ${JSON.stringify({ error: "Server error", status: "FAILED" })}\n\n`);
+        removeController(id);
         controller.close();
       }
+
+      request.signal.onabort = () => {
+        console.log(`SSE connection closed for id: ${id}`);
+        removeController(id);
+        controller.close();
+      };
     },
   });
 
