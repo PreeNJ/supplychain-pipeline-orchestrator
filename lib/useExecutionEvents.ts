@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import useWebSocket, { ReadyState } from 'react-use-websocket';
+import { useState, useEffect } from 'react';
 
 interface ExecutionEvent {
   message: string;
   status: string;
   timestamp: string;
+  eventType?: string;
   aiSummary?: string;
 }
 
@@ -39,7 +39,11 @@ export const useExecutionEvents = (executionId: string) => {
         const data = JSON.parse(event.data);
 
         setStatus(data.status);
-        setEvents((prev) => [...prev, { ...data, timestamp: new Date().toLocaleTimeString() }]);
+        setEvents((prev) => [...prev, { 
+          ...data, 
+          timestamp: new Date().toISOString(),
+          eventType: data.eventType || 'INFO'
+        }]);
 
         if (data.aiSummary) {
             setAiSummary(data.aiSummary);

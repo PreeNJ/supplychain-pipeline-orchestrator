@@ -1,11 +1,11 @@
 import ExecutionLive from './ExecutionLive';
+import { use } from 'react';
 
 interface ExecutionPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default function ExecutionPage({ params }: ExecutionPageProps) {
-  const executionId = params.id;
-  
-return <ExecutionLive executionId={executionId} />;
+  const resolvedParams = use(params);
+  return <ExecutionLive executionId={resolvedParams.id} />;
 }

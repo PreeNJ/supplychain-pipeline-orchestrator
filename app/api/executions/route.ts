@@ -1,57 +1,59 @@
 import { NextResponse } from 'next/server';
+import { publishEvent } from '@/lib/sse';
 import { prisma } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { trackingNumber } = body;
 
-    if (!trackingNumber) {
+    const { executionId, message, status, aiSummary, eventType } = body;
+
+    if (!executionId || !message) {
       return NextResponse.json(
-        { error: 'Tracking number is required' },
+        { error: 'Missing executionId or message in callback.' },
         { status: 400 }
       );
     }
 
-    const newExecution = await prisma.execution.create({
-      data: {
-        trackingNumber: trackingNumber,
-        status: 'PENDING',
-      },
+    await prisma.execution.update({
+        where: { id: executionId },
+        data: { 
+            status: status, 
+            aiSummary: aiSummary || undefined 
+        },
     });
 
+    await prisma.executionEvent.create({
+        data: {
+            executionId: executionId,
+            message: message,
+            eventType: eventType || 'INFO',
+        },
+    });
 
-    const executionId = newExecution.id;
+    const dataToPublish = {
+        message,
+        status,
+        eventType: eventType || 'INFO',
+        timestamp: new Date().toISOString(),
+        aiSummary: aiSummary || null,
+    };
 
-    const n8nHost = process.env.N8N_HOST;
+    const published = publishEvent(executionId, dataToPublish);
 
-    if (!n8nHost) {
-
-        console.warn('N8N_HOST environment variable not set. Workflow trigger skipped.');
-    } else {
-
-        const webhookPath = "a51dc2d7-8e51-46a0-afd5-0966dd16324b"; 
-        
-        const webhookUrl = `${n8nHost}/webhook/${webhookPath}`; 
-        
-
-        fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                trackingNumber: trackingNumber,
-                executionId: executionId,
-            }),
-        }).catch((e) => {
-            console.error('Failed to trigger n8n workflow:', e.message);
-        });
-    }
-
-    return NextResponse.json({ executionId: newExecution.id });
-  } catch (error) {
-    console.error('Failed to create execution:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error' },
+      { 
+        success: true, 
+        publishedToClient: published,
+        dbUpdated: true
+      },
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error('Error processing n8n callback:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error during callback processing' },
       { status: 500 }
     );
   }

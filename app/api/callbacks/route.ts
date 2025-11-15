@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { executionId, message, status, aiSummary } = body;
+    const { executionId, message, status, aiSummary, eventType } = body;
 
     if (!executionId || !message) {
       return NextResponse.json(
@@ -27,12 +27,14 @@ export async function POST(req: Request) {
         data: {
             executionId: executionId,
             message: message,
+            eventType: eventType || 'INFO',
         },
     });
 
     const dataToPublish = {
         message,
         status,
+        eventType: eventType || 'INFO',
         timestamp: new Date().toISOString(),
         aiSummary: aiSummary || null,
     };
