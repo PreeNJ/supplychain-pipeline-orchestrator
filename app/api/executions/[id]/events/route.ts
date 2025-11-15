@@ -12,7 +12,6 @@ export async function GET(
   const stream = new ReadableStream({
     async start(controller) {
       try {
-
         const execution = await prisma.execution.findUnique({
           where: { id: id },
           include: { events: { orderBy: { createdAt: 'desc' } } },
@@ -24,12 +23,16 @@ export async function GET(
           return;
         }
 
-        controller.enqueue(`data: ${JSON.stringify({
-          status: execution.status,
-          aiSummary: execution.aiSummary,
-          message: execution.events[0]?.message || "Execution started",
-          timestamp: new Date().toISOString()
-        })}\n\n`);
+        // Send all events
+        for (const event of execution.events.reverse()) {
+          controller.enqueue(`data: ${JSON.stringify({
+            status: execution.status,
+            aiSummary: execution.aiSummary,
+            message: event.message,
+            eventType: event.eventType || 'INFO',
+            timestamp: event.createdAt.toISOString()
+          })}\n\n`);
+        }
 
         const interval = setInterval(async () => {
           try {
@@ -38,12 +41,13 @@ export async function GET(
               include: { events: { orderBy: { createdAt: 'desc' }, take: 1 } },
             });
 
-            if (updated) {
+            if (updated && updated.events[0]) {
               const eventData = {
                 status: updated.status,
                 aiSummary: updated.aiSummary,
-                message: updated.events[0]?.message || "Processing...",
-                timestamp: new Date().toISOString()
+                message: updated.events[0].message,
+                eventType: updated.events[0].eventType || 'INFO',
+                timestamp: updated.events[0].createdAt.toISOString()
               };
               
               controller.enqueue(`data: ${JSON.stringify(eventData)}\n\n`);
