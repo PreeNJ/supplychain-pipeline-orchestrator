@@ -18,7 +18,7 @@ export async function GET(
       try {
         const execution = await prisma.execution.findUnique({
           where: { id: id },
-          include: { events: { orderBy: { createdAt: 'asc' } } }, // Get in chronological order
+          include: { events: { orderBy: { createdAt: 'asc' } } },
         });
 
         if (!execution) {
@@ -37,7 +37,6 @@ export async function GET(
           })}\n\n`);
         }
 
-        // 3. Check if the process is already finished and close if so
         if (execution.status === 'COMPLETED' || execution.status === 'FAILED') {
           removeController(id);
           controller.close();

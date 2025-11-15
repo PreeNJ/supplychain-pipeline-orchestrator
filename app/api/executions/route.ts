@@ -1,60 +1,37 @@
 import { NextResponse } from 'next/server';
-import { publishEvent } from '@/lib/sse';
 import { prisma } from '@/lib/db';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const { trackingNumber } = body;
 
-    const { executionId, message, status, aiSummary, eventType } = body;
-
-    if (!executionId || !message) {
-      return NextResponse.json(
-        { error: 'Missing executionId or message in callback.' },
-        { status: 400 }
-      );
+    if (!trackingNumber) {
+      return NextResponse.json({ error: 'Tracking number is required' }, { status: 400 });
     }
 
-    await prisma.execution.update({
-        where: { id: executionId },
-        data: { 
-            status: status, 
-            aiSummary: aiSummary || undefined 
-        },
-    });
-
-    await prisma.executionEvent.create({
-        data: {
-            executionId: executionId,
-            message: message,
-            eventType: eventType || 'INFO',
-        },
-    });
-
-    const dataToPublish = {
-        message,
-        status,
-        eventType: eventType || 'INFO',
-        timestamp: new Date().toISOString(),
-        aiSummary: aiSummary || null,
-    };
-
-    const published = publishEvent(executionId, dataToPublish);
-
-    return NextResponse.json(
-      { 
-        success: true, 
-        publishedToClient: published,
-        dbUpdated: true
+    const newExecution = await prisma.execution.create({
+      data: {
+        trackingNumber: trackingNumber,
+        status: 'PENDING',
       },
-      { status: 200 }
-    );
+    });
 
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (n8nWebhookUrl) {
+      fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackingNumber: trackingNumber,
+          executionId: newExecution.id,
+        }),
+      }).catch(e => console.error('Failed to trigger n8n workflow:', e));
+    }
+
+    return NextResponse.json({ executionId: newExecution.id });
   } catch (error) {
-    console.error('Error processing n8n callback:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error during callback processing' },
-      { status: 500 }
-    );
+    console.error('Failed to create execution:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
