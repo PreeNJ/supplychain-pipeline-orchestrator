@@ -34,8 +34,12 @@ export default function RunPage() {
       const data = await response.json();
       router.push(`/executions/${data.executionId}`);
 
-    } catch (err: any) {
-      setError(err.message || 'An unknown error occurred.');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'An unknown error occurred.');
+      } else {
+        setError('An unknown error occurred.');
+      }
       setLoading(false);
     }
   };

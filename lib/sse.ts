@@ -3,6 +3,8 @@ export type ResponseController = {
     close: () => void;
 };
 
+export type SSEPayload = Record<string, unknown>;
+
 const activeControllers = new Map<string, ResponseController>();
 
 export function addController(executionId: string, controller: ResponseController) {
@@ -15,7 +17,7 @@ export function removeController(executionId: string) {
     console.log(`[SSE Broker] Removed connection for: ${executionId}. Total active: ${activeControllers.size}`);
 }
 
-export function publishEvent(executionId: string, data: any) {
+export function publishEvent(executionId: string, data: SSEPayload) {
     const controller = activeControllers.get(executionId);
 
     if (controller) {

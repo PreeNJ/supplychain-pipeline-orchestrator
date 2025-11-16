@@ -38,20 +38,30 @@ export const useExecutionEvents = (executionId: string) => {
       try {
         const data = JSON.parse(event.data);
 
-        setStatus(data.status);
-        setEvents((prev) => [...prev, { 
-          ...data, 
-          timestamp: new Date().toISOString(),
-          eventType: data.eventType || 'INFO'
-        }]);
+        if (data.status) {
+          setStatus(data.status);
+        }
 
         if (data.aiSummary) {
-            setAiSummary(data.aiSummary);
+          setAiSummary(data.aiSummary);
+        }
+
+        const isSystemMessage = ['SSE_CONNECTED', 'HEARTBEAT'].includes(data.message);
+
+        if (!isSystemMessage && data.message) {
+          setEvents((prev) => [
+            ...prev,
+            {
+              ...data,
+              timestamp: data.timestamp || new Date().toISOString(),
+              eventType: data.eventType || 'INFO',
+            },
+          ]);
         }
 
         if (data.status === 'COMPLETED' || data.status === 'FAILED') {
-            setConnectionState('CLOSED');
-            eventSource.close();
+          setConnectionState('CLOSED');
+          eventSource.close();
         }
       } catch (e) {
         console.error('Error parsing SSE message:', e);

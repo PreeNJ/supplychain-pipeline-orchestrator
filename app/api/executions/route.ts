@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { simulateExecutionFlow } from '@/lib/mockExecutionFlow';
 
 export async function POST(req: Request) {
   try {
@@ -27,6 +28,8 @@ export async function POST(req: Request) {
           executionId: newExecution.id,
         }),
       }).catch(e => console.error('Failed to trigger n8n workflow:', e));
+    } else {
+      simulateExecutionFlow(newExecution.id);
     }
 
     return NextResponse.json({ executionId: newExecution.id });

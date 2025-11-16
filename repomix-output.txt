@@ -539,70 +539,6 @@ next-env.d.ts
 /app/generated/prisma
 
 ================
-File: app/api/executions/route.ts
-================
-import { NextResponse } from 'next/server';
-import { publishEvent } from '@/lib/sse';
-import { prisma } from '@/lib/db';
-
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-
-    const { executionId, message, status, aiSummary, eventType } = body;
-
-    if (!executionId || !message) {
-      return NextResponse.json(
-        { error: 'Missing executionId or message in callback.' },
-        { status: 400 }
-      );
-    }
-
-    await prisma.execution.update({
-        where: { id: executionId },
-        data: { 
-            status: status, 
-            aiSummary: aiSummary || undefined 
-        },
-    });
-
-    await prisma.executionEvent.create({
-        data: {
-            executionId: executionId,
-            message: message,
-            eventType: eventType || 'INFO',
-        },
-    });
-
-    const dataToPublish = {
-        message,
-        status,
-        eventType: eventType || 'INFO',
-        timestamp: new Date().toISOString(),
-        aiSummary: aiSummary || null,
-    };
-
-    const published = publishEvent(executionId, dataToPublish);
-
-    return NextResponse.json(
-      { 
-        success: true, 
-        publishedToClient: published,
-        dbUpdated: true
-      },
-      { status: 200 }
-    );
-
-  } catch (error) {
-    console.error('Error processing n8n callback:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error during callback processing' },
-      { status: 500 }
-    );
-  }
-}
-
-================
 File: app/executions/[id]/ExecutionLive.tsx
 ================
 'use client'; 
@@ -787,92 +723,44 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 
 ================
-File: app/api/executions/[id]/events/route.ts
+File: app/api/executions/route.ts
 ================
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export const dynamic = 'force-dynamic';
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { trackingNumber } = body;
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = await params;
-  console.log(`SSE connection opened for id: ${id}`);
+    if (!trackingNumber) {
+      return NextResponse.json({ error: 'Tracking number is required' }, { status: 400 });
+    }
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const execution = await prisma.execution.findUnique({
-          where: { id: id },
-          include: { events: { orderBy: { createdAt: 'desc' } } },
-        });
+    const newExecution = await prisma.execution.create({
+      data: {
+        trackingNumber: trackingNumber,
+        status: 'PENDING',
+      },
+    });
 
-        if (!execution) {
-          controller.enqueue(`data: ${JSON.stringify({ error: "Execution not found", status: "FAILED" })}\n\n`);
-          controller.close();
-          return;
-        }
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (n8nWebhookUrl) {
+      fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackingNumber: trackingNumber,
+          executionId: newExecution.id,
+        }),
+      }).catch(e => console.error('Failed to trigger n8n workflow:', e));
+    }
 
-        // Send all events
-        for (const event of execution.events.reverse()) {
-          controller.enqueue(`data: ${JSON.stringify({
-            status: execution.status,
-            aiSummary: execution.aiSummary,
-            message: event.message,
-            eventType: event.eventType || 'INFO',
-            timestamp: event.createdAt.toISOString()
-          })}\n\n`);
-        }
-
-        const interval = setInterval(async () => {
-          try {
-            const updated = await prisma.execution.findUnique({
-              where: { id: id },
-              include: { events: { orderBy: { createdAt: 'desc' }, take: 1 } },
-            });
-
-            if (updated && updated.events[0]) {
-              const eventData = {
-                status: updated.status,
-                aiSummary: updated.aiSummary,
-                message: updated.events[0].message,
-                eventType: updated.events[0].eventType || 'INFO',
-                timestamp: updated.events[0].createdAt.toISOString()
-              };
-              
-              controller.enqueue(`data: ${JSON.stringify(eventData)}\n\n`);
-
-              if (updated.status === 'COMPLETED' || updated.status === 'FAILED') {
-                clearInterval(interval);
-                controller.close();
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching execution update:', error);
-          }
-        }, 2000);
-
-        request.signal.onabort = () => {
-          console.log(`SSE connection closed for id: ${id}`);
-          clearInterval(interval);
-          controller.close();
-        };
-      } catch (error) {
-        console.error('Error in SSE route:', error);
-        controller.enqueue(`data: ${JSON.stringify({ error: "Server error", status: "FAILED" })}\n\n`);
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    },
-  });
+    return NextResponse.json({ executionId: newExecution.id });
+  } catch (error) {
+    console.error('Failed to create execution:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }
 
 ================
@@ -1004,6 +892,78 @@ interface ExecutionPageProps {
 export default function ExecutionPage({ params }: ExecutionPageProps) {
   const resolvedParams = use(params);
   return <ExecutionLive executionId={resolvedParams.id} />;
+}
+
+================
+File: app/api/executions/[id]/events/route.ts
+================
+import { prisma } from '@/lib/db';
+import { addController, removeController } from '@/lib/sse'; // <-- Import broker functions
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
+  console.log(`SSE connection opened for id: ${id}`);
+
+  const stream = new ReadableStream({
+    async start(controller) {
+
+      addController(id, controller);
+
+      try {
+        const execution = await prisma.execution.findUnique({
+          where: { id: id },
+          include: { events: { orderBy: { createdAt: 'asc' } } },
+        });
+
+        if (!execution) {
+          controller.enqueue(`data: ${JSON.stringify({ error: "Execution not found", status: "FAILED" })}\n\n`);
+          controller.close();
+          return;
+        } 
+
+        for (const event of execution.events) {
+          controller.enqueue(`data: ${JSON.stringify({
+            status: execution.status,
+            aiSummary: execution.aiSummary,
+            message: event.message,
+            eventType: event.eventType || 'INFO',
+            timestamp: event.createdAt.toISOString()
+          })}\n\n`);
+        }
+
+        if (execution.status === 'COMPLETED' || execution.status === 'FAILED') {
+          removeController(id);
+          controller.close();
+        }
+
+      } catch (error) {
+        console.error('Error in SSE route initial load:', error);
+        controller.enqueue(`data: ${JSON.stringify({ error: "Server error", status: "FAILED" })}\n\n`);
+        removeController(id);
+        controller.close();
+      }
+
+      request.signal.onabort = () => {
+        console.log(`SSE connection closed for id: ${id}`);
+        removeController(id);
+        controller.close();
+      };
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }
 
 ================

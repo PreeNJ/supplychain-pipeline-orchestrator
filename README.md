@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<!-- ## ChainTrack AI – Live Supply Chain Orchestration
 
-## Getting Started
+ChainTrack AI is a demo control tower that ingests webhook callbacks (a built-in simulator), persists them with Prisma/PostgreSQL, and streams status changes to the UI over Server-Sent Events. Use it to showcase real-time shipment tracking, AI summaries, and modern App Router patterns.
 
-First, run the development server:
+## Features
+- Next.js App Router + React client components
+- Prisma ORM with PostgreSQL backing store
+- SSE broker to fan out live execution events
+- Mock execution simulator for local demos when no webhook is available
+- n8n integration via `N8N_WEBHOOK_URL`
+- Tailwind v4 styling + Lucide icons
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Prerequisites
+- Node.js 18+
+- npm (or pnpm/yarn/bun)
+- PostgreSQL database (local Docker, Supabase, etc.)
+- Optional: n8n instance reachable from this app
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
+1. **Install dependencies**
+	```bash
+	npm install
+	```
+2. **Configure environment**
+	```bash
+	cp .env.example .env.local
+	```
+	Edit `.env.local` with your database credentials. To hit your real n8n workflow, set `N8N_WEBHOOK_URL` to the public webhook endpoint; otherwise leave it empty to use the mock flow. For faster demos you can tweak `MOCK_TIME_COMPRESSION` (default `5`, meaning each simulated minute renders in ~12 seconds).
+3. **Generate Prisma client & apply schema**
+	```bash
+	npx prisma migrate deploy
+	```
+4. **Run the dev server**
+	```bash
+	npm run dev
+	```
+	Visit `http://localhost:3000` for the marketing page, `/run` to start a shipment, and `/executions/[id]` to watch the live stream.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How n8n integration works
+- `POST /api/executions` creates the execution row and then:
+  - If `N8N_WEBHOOK_URL` is defined, the server `fetch`es that URL with `{ trackingNumber, executionId }`.
+  - If not defined, `simulateExecutionFlow` seeds mock events for local demos.
+- n8n should call `POST /api/callbacks` whenever pipeline milestones finish; those callbacks persist events and publish them through the SSE broker.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Troubleshooting
+- **Not hitting n8n:** ensure `N8N_WEBHOOK_URL` exists in `.env.local`, restart `npm run dev`, and confirm your webhook is accessible from the Next.js server.
+- **UI stuck in PENDING:** verify callbacks are reaching `/api/callbacks`; check terminal logs for `[SSE Broker]` messages.
+- **Prisma errors:** ensure `DATABASE_URL` and `DIRECT_URL` are valid and migrations ran successfully.
 
-## Learn More
+## Scripts
+- `npm run dev` – start Next.js (Turbopack)
+- `npm run lint` – run ESLint
+- `npm run build` / `npm start` – production build & run
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+Deploy to Vercel, Fly.io, or any Node-friendly host. Remember to set the same environment variables (`DATABASE_URL`, `DIRECT_URL`, `N8N_WEBHOOK_URL`, `N8N_HOST`) on the hosting platform. -->
