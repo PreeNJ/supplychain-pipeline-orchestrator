@@ -1,4 +1,4 @@
-<!-- ## ChainTrack AI – Live Supply Chain Orchestration
+ ## ChainTrack AI – Live Supply Chain Orchestration
 
 ChainTrack AI is a demo control tower that ingests webhook callbacks (a built-in simulator), persists them with Prisma/PostgreSQL, and streams status changes to the UI over Server-Sent Events. Use it to showcase real-time shipment tracking, AI summaries, and modern App Router patterns.
 
@@ -12,9 +12,9 @@ ChainTrack AI is a demo control tower that ingests webhook callbacks (a built-in
 
 ## Prerequisites
 - Node.js 18+
-- npm (or pnpm/yarn/bun)
-- PostgreSQL database (local Docker, Supabase, etc.)
-- Optional: n8n instance reachable from this app
+- npm
+- PostgreSQL database (Supabase, local Docker)
+-  n8n instance reachable from this app
 
 ## Setup
 1. **Install dependencies**
@@ -48,9 +48,12 @@ ChainTrack AI is a demo control tower that ingests webhook callbacks (a built-in
 - **Prisma errors:** ensure `DATABASE_URL` and `DIRECT_URL` are valid and migrations ran successfully.
 
 ## Scripts
-- `npm run dev` – start Next.js (Turbopack)
+- `npm run dev` – start Next.js 
 - `npm run lint` – run ESLint
 - `npm run build` / `npm start` – production build & run
 
 ## Deployment
-Deploy to Vercel, Fly.io, or any Node-friendly host. Remember to set the same environment variables (`DATABASE_URL`, `DIRECT_URL`, `N8N_WEBHOOK_URL`, `N8N_HOST`) on the hosting platform. -->
+Deploy to Vercel, Fly.io, or any Node-friendly host. Remember to set the same environment variables (`DATABASE_URL`, `DIRECT_URL`, `N8N_WEBHOOK_URL`, `N8N_HOST`) on the hosting platform.
+
+## Copyright
+Copyright (c) 2025 Priscillah.

@@ -28,6 +28,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <footer className="w-full py-6 text-center text-sm text-gray-500">
+          © {new Date().getFullYear()} Priscillah. All rights reserved.
+        </footer>
       </body>
     </html>
   );
