@@ -5,9 +5,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
+  const resolvedParams = await params;
+  const id = resolvedParams.id;
   console.log(`SSE connection opened for id: ${id}`);
 
   const stream = new ReadableStream({
