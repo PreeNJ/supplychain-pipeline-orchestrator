@@ -20,6 +20,7 @@ export async function POST(req: Request) {
 
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
     if (n8nWebhookUrl) {
+      console.log('Triggering n8n', n8nWebhookUrl);
       fetch(n8nWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

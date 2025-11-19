@@ -1,0 +1,183 @@
+{
+  "name": "ChainTrack Six-Step Demo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chaintrack-run",
+        "responseMode": "lastNode",
+        "options": {}
+      {
+        "parameters": {
+          "url": "={{$json.callbackUrl}}",
+          "method": "POST",
+          "jsonParameters": true,
+          "options": {},
+          "bodyParametersJson": "={{ { \"executionId\": $json.executionId, \"message\": 'Out for delivery to final destination', \"status\": 'PROCESSING', \"eventType\": 'OUT_FOR_DELIVERY' } }}"
+        },
+        "functionCode": "const { executionId, trackingNumber, callbackBaseUrl } = $json.body || $json;\nreturn [{\n  executionId,\n  trackingNumber,\n  callbackUrl: callbackBaseUrl || 'https://YOUR_CALLBACK_HOST/api/callbacks'\n}];"
+      },
+      "id": "Prepare_Payload",
+      "name": "Prepare Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "url": "={{$json.callbackUrl}}",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ { \"executionId\": $json.executionId, \"message\": 'Shipment registered with carrier', \"status\": 'PROCESSING', \"eventType\": 'LABEL_CREATED' } }}"
+      },
+      "id": "Step_1",
+      "name": "Step 1 - Registered",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "url": "={{$json.callbackUrl}}",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ { \"executionId\": $json.executionId, \"message\": 'Package picked up from origin facility', \"status\": 'PROCESSING', \"eventType\": 'PICKED_UP' } }}"
+      },
+      "id": "Step_2",
+      "name": "Step 2 - Picked Up",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "url": "={{$json.callbackUrl}}",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ { \"executionId\": $json.executionId, \"message\": 'Departed origin hub and en route to regional hub', \"status\": 'PROCESSING', \"eventType\": 'IN_TRANSIT' } }}"
+      },
+      "id": "Step_3",
+      "name": "Step 3 - Departed Hub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "url": "={{$json.callbackUrl}}",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ { \"executionId\": $json.executionId, \"message\": 'Arrived at regional distribution hub', \"status\": 'PROCESSING', \"eventType\": 'ARRIVED_AT_HUB' } }}"
+      },
+      "id": "Step_4",
+      "name": "Step 4 - Arrived Hub",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "url": "={{$json.callbackUrl}}",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ { \"executionId\": $json.executionId, \"message\": 'Out for delivery to final destination', \"status\": 'PROCESSING', \ \"eventType\": 'OUT_FOR_DELIVERY' } }}"
+      },
+      "id": "Step_5",
+      "name": "Step 5 - Out For Delivery",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "url": "={{$json.callbackUrl}}",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ { \"executionId\": $json.executionId, \"message\": 'Shipment delivered and signed for', \"status\": 'COMPLETED', \"eventType\": 'DELIVERED', \"aiSummary\": 'Carrier confirmed successful delivery. No outstanding actions.' } }}"
+      },
+      "id": "Step_6",
+      "name": "Step 6 - Delivered",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    }
+  ],
+  "connections": {
+    "Webhook Start": {
+      "main": [
+        [
+          {
+            "node": "Prepare Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Payload": {
+      "main": [
+        [
+          {
+            "node": "Step 1 - Registered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 1 - Registered": {
+      "main": [
+        [
+          {
+            "node": "Step 2 - Picked Up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 2 - Picked Up": {
+      "main": [
+        [
+          {
+            "node": "Step 3 - Departed Hub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 3 - Departed Hub": {
+      "main": [
+        [
+          {
+            "node": "Step 4 - Arrived Hub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 4 - Arrived Hub": {
+      "main": [
+        [
+          {
+            "node": "Step 5 - Out For Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Step 5 - Out For Delivery": {
+      "main": [
+        [
+          {
+            "node": "Step 6 - Delivered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

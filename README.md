@@ -9,6 +9,7 @@ ChainTrack AI is a demo control tower that ingests webhook callbacks (a built-in
 - Mock execution simulator for local demos when no webhook is available
 - n8n integration via `N8N_WEBHOOK_URL`
 - Tailwind v4 styling + Lucide icons
+- Connector selector on `/run` to demonstrate swapping carriers/marketplaces without code changes
 
 ## Prerequisites
 - Node.js 18+
@@ -54,6 +55,11 @@ ChainTrack AI is a demo control tower that ingests webhook callbacks (a built-in
 
 ## Deployment
 Deploy to Vercel, Fly.io, or any Node-friendly host. Remember to set the same environment variables (`DATABASE_URL`, `DIRECT_URL`, `N8N_WEBHOOK_URL`, `N8N_HOST`) on the hosting platform.
+
+## Connector & Roadmap Notes
+- Use the provider dropdown on `/run` to simulate plugging in Amazon, AliExpress, DHL, or any n8n workflow without redeploying.
+- To add a new marketplace, point its webhook to `/api/callbacks` or duplicate the provided `docs/n8n-sample-workflow.json` template with custom milestones.
+- Future enhancements: authenticated dashboards per carrier, automated AI-driven interventions (tickets/emails), and Redis-backed SSE for horizontal scaling.
 
 ## Copyright
 Copyright (c) 2025 Priscillah.
